@@ -1,3 +1,4 @@
+#include "header.cuh"
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -5,46 +6,6 @@
 
 using namespace std;
 
-struct Pos{
-    double x;
-    double y;
-    double z;
-    __host__ __device__ Pos(double x, double y, double z) : x(x), y(y), z(z){}
-    __host__ __device__ Pos() : x(0), y(0), z(0){}
-    __host__ __device__ Pos operator-(const Pos& o) const {
-        return Pos(x - o.x, y - o.y, z - o.z);
-    }
-    __host__ __device__ Pos operator+(const Pos& o) const {
-        return Pos(x + o.x, y + o.y, z + o.z);
-    }
-    __host__ __device__ Pos operator*(double s) const {
-        return Pos(x * s, y * s, z * s);
-    }
-    __host__ __device__ Pos operator/(double s) const {
-        return Pos(x / s, y / s, z / s);
-    }
-    __host__ __device__ bool operator==(Pos s) const {
-        const double epsilon = 1e-5;
-        return fabs(x - s.x) < epsilon && fabs(y - s.y) < epsilon && fabs(z - s.z) < epsilon;
-    }
-    __host__ __device__ bool operator!=(Pos s) const {
-        const double epsilon = 1e-5;
-        return fabs(x - s.x) >= epsilon || fabs(y - s.y) >= epsilon || fabs(z - s.z) >= epsilon;
-    }
-};
-
-class Object{
-public:
-    double m;//mass
-    Pos v;//velocity
-    Pos a;//mass
-    Pos pos;
-    __host__ __device__ Object(double m, Pos v,Pos a, Pos pos)
-        : m(m), v(v), a(a), pos(pos){}
-    __host__ __device__ Pos getPosition(){
-        return pos;
-    }
-};
 
 class Physics{
 public:
@@ -228,7 +189,7 @@ public:
     }
     void printState() {
         for (size_t i = 0; i < objList.size(); i++) {
-            cout << "Obj" << i 
+            cout << "Obj" << i << " (" << objList[i].name << ")"
                  << " pos=(" << objList[i].pos.x << ", "
                              << objList[i].pos.y << ", "
                              << objList[i].pos.z << ")"
@@ -253,14 +214,15 @@ public:
 
 };
 
-
-int main(){
+void run_test(){
     Space spaceCPU(1000,86400); // dt = 86400 seconds = 1 day
     Space spaceGPU(1000,86400); // dt = 86400 seconds = 1 day
     
     //Mass Velocity Acceleration Position
     Object sun(1.989e30, Pos(0, 0, 0), Pos(0, 0, 0),Pos(0, 0, 0));
     Object earth(5.972e24, Pos(0, 29783, 0), Pos(0, 0, 0), Pos(1.5e11, 0, 0));
+    sun.setName("Sun");
+    earth.setName("earth");
 
     spaceCPU.addObject(sun);
     spaceCPU.addObject(earth);
@@ -269,9 +231,9 @@ int main(){
     spaceGPU.addObject(earth);
 
     for (int step = 0; step < 10; step++) {
-        // cout << "Step " << step << endl;
-        // cout << "CPU" << endl;
-        // spaceCPU.printState();
+        cout << "Step " << step << endl;
+        cout << "CPU" << endl;
+        spaceCPU.printState();
         cout << "GPU" << endl;
         spaceGPU.printState();
         spaceCPU.computeStepCPU();
@@ -280,5 +242,133 @@ int main(){
         
         
     }
+}
 
+void run(){
+    Config config = readConfig("config.txt");
+    vector<Object> objects = readObjectsFromCSV("object_input.csv");
+
+    Space spaceGPU(config.space_size, config.dt);
+    Space spaceCPU(config.space_size, config.dt);
+
+    for (const Object& obj : objects) {
+        spaceGPU.addObject(obj);
+        spaceCPU.addObject(obj);
+    }
+
+    // Calculate based on video duration and framerate
+    int total_frames = (int)(config.simulation_time_seconds * config.fps);
+    int total_steps = total_frames;
+    int steps_per_frame = 1;
+
+    cout << "Running simulation..." << endl;
+    cout << "Video duration: " << config.simulation_time_seconds << " seconds at " << config.fps << " fps" << endl;
+    cout << "Total frames: " << total_frames << endl;
+    cout << "Total steps: " << total_steps << endl;
+    cout << "Time per step (dt): " << config.dt << " seconds (" << config.dt/86400.0 << " days)" << endl;
+    cout << "Total simulated time: " << (total_steps * config.dt) << " seconds (" << (total_steps * config.dt)/86400.0 << " days)" << endl;
+
+    // Initialize output CSV files
+    initTimeSeriesCSV("output_gpu.csv");
+    initTimeSeriesCSV("output_cpu.csv");
+
+    //simulation
+    for (int step = 0; step < total_steps; step++) {
+        if (step % steps_per_frame == 0) {
+            int frame_num = step / steps_per_frame;
+            cout << "Frame " << frame_num << " (Step " << step << ")" << endl;
+            // cout << "CPU" << endl;
+            // spaceCPU.printState();
+            // cout << "GPU" << endl;
+            // spaceGPU.printState();
+
+            appendFrameToCSV("output_cpu.csv", frame_num, spaceCPU.objList);
+            appendFrameToCSV("output_gpu.csv", frame_num, spaceGPU.objList);
+        }
+
+        spaceCPU.computeStepCPU();
+        spaceGPU.computeStepGPU();
+
+        // if (step % steps_per_frame == 0) {
+        //     cout << "Verify : " << (spaceCPU == spaceGPU ? "TRUE ✅" : "FALSE : ❌") << endl;
+        // }
+    }
+
+    cout << "\nSimulation complete! Output saved to:" << endl;
+    cout << "  - output_gpu.csv (GPU results)" << endl;
+    cout << "  - output_cpu.csv (CPU results)" << endl;
+
+}
+
+void run_benchmark(){
+    Config config = readConfig("config.txt");
+    vector<Object> objects = readObjectsFromCSV("object_input.csv");
+
+    Space spaceGPU(config.space_size, config.dt);
+    Space spaceCPU(config.space_size, config.dt);
+
+    for (const Object& obj : objects) {
+        spaceGPU.addObject(obj);
+        spaceCPU.addObject(obj);
+    }
+
+    int total_frames = (int)(config.simulation_time_seconds * config.fps);
+    int total_steps = total_frames;
+
+    cout << "=== BENCHMARK MODE ===" << endl;
+    cout << "Objects: " << objects.size() << endl;
+    cout << "Steps: " << total_steps << endl;
+    cout << "Time per step: " << config.dt/86400.0 << " days" << endl;
+    cout << "\n";
+
+    // CPU Benchmark
+    cout << "Running CPU simulation..." << endl;
+    Timer cpuTimer;
+    cpuTimer.start();
+
+    for (int step = 0; step < total_steps; step++) {
+        if (step % 10 == 0) {
+            cout << "  CPU Progress: " << step << "/" << total_steps << "\r" << flush;
+        }
+        spaceCPU.computeStepCPU();
+    }
+
+    double cpuTime = cpuTimer.elapsed_sec();
+    cout << "\nCPU Time: " << cpuTime << " seconds" << endl;
+    cout << "CPU Speed: " << total_steps / cpuTime << " steps/second" << endl;
+    cout << "\n";
+
+    // GPU Benchmark
+    cout << "Running GPU simulation..." << endl;
+    GPUTimer gpuTimer;
+    gpuTimer.start();
+
+    for (int step = 0; step < total_steps; step++) {
+        if (step % 10 == 0) {
+            cout << "  GPU Progress: " << step << "/" << total_steps << "\r" << flush;
+        }
+        spaceGPU.computeStepGPU();
+    }
+
+    float gpuTime = gpuTimer.elapsed_sec();
+    cout << "\nGPU Time: " << gpuTime << " seconds" << endl;
+    cout << "GPU Speed: " << total_steps / gpuTime << " steps/second" << endl;
+    cout << "\n";
+
+    // Results
+    cout << "=== RESULTS ===" << endl;
+    cout << "CPU Time: " << cpuTime << " s" << endl;
+    cout << "GPU Time: " << gpuTime << " s" << endl;
+    cout << "Speedup: " << (cpuTime / gpuTime) << "x" << endl;
+}
+
+int main(){
+    bool test = false;
+    bool benchmark = true;
+
+    if(test) run_test();
+    else if(benchmark) run_benchmark();
+    else run();
+
+    return 0;
 }

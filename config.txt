@@ -1,0 +1,10 @@
+# Simulation Configuration
+# space_size: Maximum distance for visualization (meters)
+# dt: Real-world time per simulation step in seconds (86400 = 1 day)
+# simulation_time_seconds: Output video duration in seconds (e.g., 10 = 10 second video)
+# fps: Output video framerate (e.g., 60 = 60 frames per second)
+
+space_size=5e12
+dt=86400
+simulation_time_seconds=10
+fps=60
