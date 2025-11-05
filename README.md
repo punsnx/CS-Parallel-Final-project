@@ -14,3 +14,7 @@
 ## Visualization
 1.Run all visualize.ipynb for simulate from calculated object positons in csv files to mp4
 2.simulate_input.ipynb use for simulate test input to benchmark CPU and GPU code you can edit size of input for generate then run all to generate 
+
+
+## DEMO
+OUTPUT-GPU : https://youtu.be/lzWCaZkP1ow
