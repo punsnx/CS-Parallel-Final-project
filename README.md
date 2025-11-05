@@ -1,7 +1,9 @@
 # Gravitational N-Bodies Simulation
 - By 6610402230 Sirisuk Tharntham
 - the project is to simulate object movement orbit in vector vector space with parallel algorithm optimization with CUDA
-
+  
+# Presentation Slide
+https://drive.google.com/file/d/1liJohj5b_gR5wAlCOAihu3H665Oiz2zI/view?usp=sharing
 
 ## Compile and Run
 1. add object to object_input.csv
