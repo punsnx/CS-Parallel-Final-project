@@ -401,7 +401,7 @@ void run_benchmark(){
 
 int main(){
     bool test = false;
-    bool benchmark = true;
+    bool benchmark = false;
 
     if(test) run_test();
     else if(benchmark) run_benchmark();
