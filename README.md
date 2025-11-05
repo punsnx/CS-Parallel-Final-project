@@ -4,6 +4,7 @@
   
 # Presentation Slide
 https://drive.google.com/file/d/1liJohj5b_gR5wAlCOAihu3H665Oiz2zI/view?usp=sharing
+https://drive.google.com/file/d/1oWsR6Qj3Qt0VY3IrOktB3PkFgpypGwTi/view?usp=sharing (compressed 10 MB)
 
 ## Compile and Run
 1. add object to object_input.csv
